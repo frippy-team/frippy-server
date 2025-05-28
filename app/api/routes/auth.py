@@ -62,11 +62,16 @@ def callback(request: Request):
 
         email = userinfo.get("email")
         name = userinfo.get("name")
+        picture = userinfo.get("picture")
 
         if not email:
             raise HTTPException(status_code=400, detail="Google login failed: No email found")
 
-        token = create_access_token({"sub": email, "name": name})
+        token = create_access_token({
+            "sub": email,
+            "name": name,
+            "picture": picture,
+        })
 
         redirect_url = f"{settings.CLIENT_URL}/login/success?token={token}&name={name}"
         return RedirectResponse(redirect_url)
@@ -74,4 +79,4 @@ def callback(request: Request):
     except Exception as e:
         print("OAuth CallBack Error:", e)
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Error occured while processing OAuth")
+        raise HTTPException(status_code=500, detail="Error occurred while processing OAuth")
