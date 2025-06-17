@@ -1,11 +1,9 @@
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Request, HTTPException, Body
+from fastapi.responses import RedirectResponse, JSONResponse
 from google_auth_oauthlib.flow import Flow
 from app.core.config import settings
 from app.core.security import create_access_token
-import os
-import requests
-import traceback
+import os, requests, traceback
 
 router = APIRouter()
 
@@ -64,19 +62,50 @@ def callback(request: Request):
         name = userinfo.get("name")
         picture = userinfo.get("picture")
 
-        if not email:
-            raise HTTPException(status_code=400, detail="Google login failed: No email found")
+        if not email or not userinfo.get("verified_email", False):
+            raise HTTPException(status_code=400, detail="Google login failed: Email not verified")
 
         token = create_access_token({
             "sub": email,
             "name": name,
             "picture": picture,
+            "provider": "google",
         })
 
-        redirect_url = f"{settings.CLIENT_URL}/login/success?token={token}&name={name}"
+        redirect_url = f"{settings.CLIENT_URL}/login/success?token={token}"
         return RedirectResponse(redirect_url)
 
     except Exception as e:
         print("OAuth CallBack Error:", e)
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Error occurred while processing OAuth")
+
+@router.post("/register")
+def register_user(
+    user_data: dict = Body(...)
+):
+    """
+    user_data: {
+        "email": str,
+        "name": str,
+        "picture": str,
+        "provider": "google",
+        "phone_number": str
+    }
+    """
+    # ⚠️ 예시 코드. 실제 DB 연동 필요
+    email = user_data["email"]
+    provider = user_data["provider"]
+    phone = user_data["phone_number"]
+
+    # 👉 여기에 DB에서 email로 유저 찾기/없으면 생성
+    # 👉 소셜 계정 연결 여부 확인
+    # 👉 phone_number로 중복 여부 검사 등 추가
+
+    print(f"[회원가입 요청] email={email}, provider={provider}, phone={phone}")
+    
+    token = create_access_token({"sub": email})
+    return JSONResponse({
+        "message": "User registered/connected",
+        "access_token": token,
+    })
